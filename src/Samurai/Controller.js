@@ -3,11 +3,14 @@
  */
 
 class Controller {
+    
     constructor(name) {
-        configure();
+        this.configure();
     }
 
     configure() {
 
     }
 }
+
+export default Controller;

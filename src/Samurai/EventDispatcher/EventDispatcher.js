@@ -1,5 +1,5 @@
-import Event from "Event";
-import _ from "node_modules/lodash/lodash";
+import GenericEvent from "./GenericEvent";
+import _ from "lodash";
 
 class EventDispatcher {
 
@@ -9,8 +9,8 @@ class EventDispatcher {
     }
 
     dispatch(eventName, event) {
-        if (!event instanceof Event) {
-            throw new Error("event must be of Event type");
+        if (!event instanceof GenericEvent) {
+            throw new TypeError("Event type required");
         }
 
         let listeners;
@@ -24,10 +24,10 @@ class EventDispatcher {
 
     getListeners(eventName = null) {
         if (null !== eventName) {
-            if (typeof this.listeners[eventName] !== 'undefined') {
+            if (typeof this.listeners[eventName] === 'undefined') {
                 return [];
             }
-            if (typeof this.sorted[eventName] !== 'undefined') {
+            if (typeof this.sorted[eventName] === 'undefined') {
                 this.sortListeners(eventName);
             }
             return this.sorted[eventName];
@@ -50,25 +50,18 @@ class EventDispatcher {
         if (_.isArray(listener) && _.isSet(listener[0]) && listener[0] instanceof Function) {
             listener[0] = listener[0]();
         }
-        _.forEach(this.listeners[eventName] as $priority
-    =>
-        listeners
-    )
-        {
-            _.forEach(listeners as $k
-        =>
-            $v
-        )
-            {
-                if ($v !== listener && _.isArray($v) && _.isSet($v[0]) && $v[0] instanceof Function) {
-                    $v[0] = $v[0]();
-                    this.listeners[eventName][$priority][$k] = $v;
+        _.forEach(this.listeners[eventName], (priority, listeners) => {
+
+            _.forEach(listeners, (k, v) => {
+                if (v !== listener && _.isArray(v) && _.isSet(v[0]) && v[0] instanceof Function) {
+                    v[0] = v[0]();
+                    this.listeners[eventName][priority][k] = v;
                 }
-                if ($v === listener) {
-                    return $priority;
+                if (v === listener) {
+                    return priority;
                 }
-            }
-        }
+            });
+        });
     }
 
     hasListeners(eventName = null) {
@@ -105,61 +98,59 @@ class EventDispatcher {
         }
         _.forEach(this.listeners[eventName], (priority, listeners) => {
 
-            _.forEach(listeners, ($k, $v) => {
-                if ($v !== listener && _.isArray($v) && _.isSet($v[0]) && $v[0] instanceof Function) {
-                    $v[0] = $v[0]();
+            _.forEach(listeners, (k, v) => {
+                if (v !== listener && _.isArray(v) && _.isSet(v[0]) && v[0] instanceof Function) {
+                    v[0] = v[0]();
                 }
-                if ($v === listener) {
-                    unset(listeners[$k], this.sorted[eventName]);
+                if (v === listener) {
+                    unset(listeners[k], this.sorted[eventName]);
                 } else {
-                    listeners[$k] = $v;
+                    listeners[k] = v;
                 }
             });
 
 
             if (listeners) {
-                this.listeners[eventName][$priority] = listeners;
+                this.listeners[eventName][priority] = listeners;
             } else {
-                delete this.listeners[eventName][$priority];
+                delete this.listeners[eventName][priority];
             }
         });
     }
 
-    /**
-     * Triggers the listeners of an event.
-     *
-     * This method can be overridden to add functionality that is executed
-     * for each listener.
-     *
-     * @param callable[] listeners The event listeners
-     * @param string     eventName The name of the event to dispatch
-     * @param Event      $event     The event object to pass to the event handlers/listeners
-     */
     doDispatch(listeners, eventName, event) {
         _.forEach(listeners, (listener) => {
-            if (event.propagating()) {
-                listener.call(event, eventName, this);
+            if (event.isPropagating()) {
+                listener.call(null, event);
             }
         });
     }
-
-    /**
-     * Sorts the internal list of listeners for the given event by priority.
-     *
-     * @param string eventName The name of the event
-     */
+    
     sortListeners(eventName) {
-        krsort(this.listeners[eventName]);
-        this.sorted[eventName] = array();
-        _.forEach(this.listeners[eventName], ($priority, listeners) => {
-            _.forEach(listeners, ($k, listener) => {
+        this.listeners[eventName].sort((a, b) => {
+            if (a < b) {
+                return -1;
+            }
+            if(a == b) {
+                return 0;
+            }
+            if(a > b) {
+                return 1;
+            }
+        });
+        let sorted = [];
+        let listeners = this.listeners;
+        _.forEach(listeners[eventName], (listeners, priority) => {
+            _.forEach(listeners, (listener, k) => {
                 if (_.isArray(listener) && _.isSet(listener[0]) && listener[0] instanceof Function) {
                     listener[0] = listener[0]();
-                    this.listeners[eventName][$priority][$k] = listener;
+                    listeners[eventName][priority][k] = listener;
                 }
-                this.sorted[eventName][] = listener;
+                sorted.push(listener);
             });
         });
+        this.listeners = listeners;
+        this.sorted[eventName] = sorted;
     }
 }
 

@@ -8,8 +8,20 @@ class Route {
         this.parameters = parameters;
     }
 
+    get controller() {
+        return this.parameters.controller;
+    }
+
+    get action() {
+        return this.parameters.action;
+    }
+
     name() {
         return this.name;
+    }
+
+    called(name) {
+        this.name;
     }
 }
 
